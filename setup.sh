@@ -1,6 +1,6 @@
 #!/bin/bash
 # setup.sh
-# Update: 2023/08/14
+# Update: 2023/08/29
 
 OS=`cat /etc/lsb-release | grep DISTRIB_ID | cut -d '=' -f2 | cut -d '"' -f2`
 if [[ $OS != 'Arch' ]];then
@@ -436,13 +436,12 @@ echo 'OK'
 echo -n "Loading Installation..."
 dialog --version &> /dev/null
 if [ $? -ne 0 ];then
-    pacman -Sy --noconfirm dialog gpm xf86-input-synaptics xf86-input-vmmouse &> /dev/null
+    pacman -Sy --noconfirm dialog &> /dev/null
     if [ $? -ne 0 ]; then
         echo 'ERROR'
         echo -e "\033[1;31m[ERROR] Getting failed! \033[0m"
         exit 1;
     fi
-    systemctl enable --now gpm
 fi
 # Create a default config file when it is not exist.
 mkdir -p .icache

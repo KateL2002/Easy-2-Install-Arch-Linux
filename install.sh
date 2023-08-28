@@ -1,5 +1,6 @@
 #!/bin/bash
 # Install Arch Linux
+# Update: 2023/08/29
 
 hostnamectl &> /dev/null
 if [ $? -eq 0 ];then
@@ -149,10 +150,10 @@ EOF
             ;;
         budgie)
             echo "[$(date '+%F %T')] Installing Budgie..."
-            pacman -S --noconfirm budgie gnome-extra nautilus lightdm lightdm-slick-greeter arc-gtk-theme papirus-icon-theme network-manager-applet firefox 
+            pacman -S --noconfirm budgie nemo cinnamon-translations lightdm lightdm-slick-greeter arc-gtk-theme papirus-icon-theme network-manager-applet firefox 
             while [[ $? -ne 0 ]]; do
                 echo "[$(date '+%F %T')] Installation failed, attempting to reinstall Budgie..."
-                pacman -S --noconfirm budgie gnome-extra nautilus lightdm lightdm-slick-greeter arc-gtk-theme papirus-icon-theme network-manager-applet firefox 
+                pacman -S --noconfirm budgie nemo cinnamon-translations lightdm lightdm-slick-greeter arc-gtk-theme papirus-icon-theme network-manager-applet firefox 
             done
             sed -i 's/#greeter-session=example-gtk-gnome/greeter-session=lightdm-slick-greeter/' /etc/lightdm/lightdm.conf
             cat > /etc/lightdm/slick-greeter.conf << EOF
@@ -214,7 +215,12 @@ fi
 
 if [ $INSTALL_DISK ];then
     echo "[$(date '+%F %T')] Installing grub..."
-    grub-install --target=i386-pc /dev/$INSTALL_DISK
+    if [ `cat /root/.is_efi` -eq 1 ]; then
+        grub-install --target=x86_64-efi --efi-directory=/boot/EFI/ --removable
+    else
+        grub-install --target=i386-pc /dev/$INSTALL_DISK
+    fi
+    
     echo "[$(date '+%F %T')] making boot config for grub..."
     grub-mkconfig -o /boot/grub/grub.cfg
 else

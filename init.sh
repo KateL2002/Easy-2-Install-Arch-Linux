@@ -1,6 +1,6 @@
 #!/bin/bash
 # init.sh
-# This script is only for Install.
+# Update: 2023/08/29
 
 OS=`cat /etc/lsb-release | grep DISTRIB_ID | cut -d '=' -f2 | cut -d '"' -f2`
 if [[ $OS != 'Arch' ]];then
@@ -11,6 +11,12 @@ fi
 if [ ! -f .iconfig ];then
     echo "[ERROR] Config file is not found!" >&2
     exit 1
+fi
+
+if [[ -d /sys/firmware/efi ]];then
+    IS_EFI=1    # EFI Mode
+else
+    IS_EFI=0    # BIOS Mode
 fi
 
 source .iconfig; sleep 1s
@@ -64,6 +70,12 @@ fi
 if [ ! $INSTALL_DISK ];then
     echo "[ERROR] You have not set up install disk!" >&2
     exit 1
+fi
+
+if [ $IS_EFI -eq 0 ]; then
+    MOUNT=/mnt/boot
+else
+    MOUNT=/mnt/boot/EFI 
 fi
 
 disable_ctrl_c() {
@@ -120,8 +132,12 @@ Install_on_a_disk() {
         exit 1
     fi
     parted /dev/$INSTALL_DISK unit MiB
-    parted /dev/$INSTALL_DISK mkpart sysboot ext4 0% 512MiB 
-    parted /dev/$INSTALL_DISK set 1 bios_grub on
+    parted /dev/$INSTALL_DISK mkpart sysboot ext4 0% 512MiB
+    if [ $IS_EFI -eq 1 ]; then
+        parted /dev/$INSTALL_DISK set 1 esp on
+    else
+        parted /dev/$INSTALL_DISK set 1 bios_grub on
+    fi
     parted /dev/$INSTALL_DISK mkpart main ext4 512MiB 100%
     if [ $? -ne 0 ];then
         echo "[ERROR] An error occurred while creating partition." >&2
@@ -136,7 +152,8 @@ Install_on_a_disk() {
         echo "[ERROR] An error occurred while formatting partition." >&2
         exit 1
     fi
-    mount /dev/$PART1 --mkdir /mnt/boot && mount /dev/$PART2 /mnt
+    
+    mount /dev/$PART1 --mkdir $MOUNT && mount /dev/$PART2 /mnt
     if [ $? -ne 0 ];then
         echo "[ERROR] An error occurred while mounting partition." >&2
         exit 1
@@ -154,7 +171,7 @@ echo "[$(date '+%F %T')] Checking hard disk..."
 sleep 0.5s
 case $INSTALL_DISK_MODE in
     'Custom')
-        if [[ ! $(lsblk | grep "/mnt$") || ! $(lsblk | grep '/mnt/boot') ]];then
+        if [[ ! $(lsblk | grep "/mnt$") || ! $(lsblk | grep $MOUNT) ]];then
             echo "[ERROR] The partition is not mounted correctly!" >&2
             exit 1
         fi
@@ -168,21 +185,13 @@ case $INSTALL_DISK_MODE in
         fi
         ;;
     'Automatically')
-        if [[ ! $(lsblk | grep "/mnt$") || ! $(lsblk | grep '/mnt/boot') ]];then
+        if [[ ! $(lsblk | grep "/mnt$") || ! $(lsblk | grep $MOUNT) ]];then
             if [[ $(lsblk | grep $INSTALL_DISK | wc -l) == 1 ]];then
                 Install_on_a_disk
             else
-                for i in [1..6]; do
-                    echo "[$(date '+%F %T')] The hard disk will be erased after $[6-i] seconds."
-                done
-                echo "[$(date '+%F %T')] Erasing hard disk, please do not force kill the program."
-                swapoff -a
-                umount -af
-                shred -n 1 -vz /dev/$INSTALL_DISK 2>&1
-                Install_on_a_disk
+                echo "[ERROR] Can not Automatically partition, this is only for virtual machine! " >&2
             fi
         fi
-        
         ;;
     *)
         echo "[ERROR] The installation hard disk mode is unknown." >&2
@@ -219,6 +228,8 @@ echo "[$(date '+%F %T')] Writing Fstab File..."
 genfstab -U /mnt > /mnt/etc/fstab
 echo "[$(date '+%F %T')] Coping files to new environment..."
 chmod u+x ./install.sh
+echo $IS_EFI > .is_efi
+cp .is_efi /mnt/root/
 cp install.sh /mnt/root/
 cp .iconfig /mnt/root/
 cp /etc/zsh/* /mnt/etc/zsh/
