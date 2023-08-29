@@ -2,7 +2,7 @@
 
 ----
 
-<p align=center>![screenshot](screenshot/screenshot.png)</p>
+<p align=center><img src="screenshot/screenshot.png" title="screenshot"></p>
 
 <p align=center>Based on a simulated GUI dialog (Dialog), configure and install Arch Linux.</p>
 
