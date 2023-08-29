@@ -2,13 +2,15 @@
 
 ----
 
+![screenshot](screenshot/screenshot.png)
+
 <p align=center>Based on a simulated GUI dialog (Dialog), configure and install Arch Linux.</p>
 
 ## Installation
 
 1. Use git to clone this repository.
    ```bash
-   git clone 
+   git clone https://github.com/KateL2002/Easy-2-Install-Arch-Linux.git
    ```
 
 2. Change work directory and run this script.
@@ -36,7 +38,6 @@
 - zsh
 - zsh-completions
 - neofetch
-
 - Firefox (If select desktop or server installation mode)
 
 ### Desktop Environment
