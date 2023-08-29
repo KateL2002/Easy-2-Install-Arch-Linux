@@ -8,11 +8,13 @@ if [[ $OS != 'Arch' ]];then
     exit 1;
 fi
 
-# if [[ -d /sys/firmware/efi ]];then
-#     IS_EFI=1    # EFI Mode
-# else
-#     IS_EFI=0    # BIOS Mode
-# fi
+if [[ -d /sys/firmware/efi ]];then
+    IS_EFI=1
+    EFIMOUNT=/boot/EFI    # EFI Mode
+else
+    IS_EFI=0
+    EFIMOUNT=/boot    # BIOS Mode
+fi
 
 timezone() {
     dialog --clear
@@ -131,12 +133,18 @@ custom_drive() {
                     done
                     dialog --backtitle "Arch Linux Installation" --title "Format Partition" --menu "Select a partition to format:  " 12 30 8 `cat .icache/.lsblk` 2> .icache/.getpart
                     if [ $? -eq 0 ];then
-                        dialog --backtitle "Arch Linux Installation" --title "Format Partition" --menu "Select a filesystem for $(cat .icache/.getmethod):  " 15 50 8 'swap' 'Only For Swap Patition' 'exfat' 'Only For Boot Partition' 'ext4' 'Ext4 Filesystem' 'ext3' 'Ext3 filesystem' 'nfs' 'Network filesystem' 'jfs' 'JFS' 'xfs' 'XFS' 'Custom' 'Input a filesystem' 2> .icache/.getmethod
+                        dialog --backtitle "Arch Linux Installation" --title "Format Partition" --menu "Select a filesystem for $(cat .icache/.getmethod):  " 15 50 8 'swap' 'Only For Swap Patition' 'fat32' 'Only For EFI Partition' 'exfat' 'Only For Boot Partition' 'ext4' 'Ext4 Filesystem' 'ext3' 'Ext3 filesystem' 'nfs' 'Network filesystem' 'jfs' 'JFS' 'xfs' 'XFS' 'Custom' 'Input a filesystem' 2> .icache/.getmethod
                         if [ $? -eq 0 ];then
                             case $(cat .icache/.getmethod) in
                                 'swap')
                                     mkswap /dev/$(cat .icache/.getpart)
                                     swapon /dev/$(cat .icache/.getpart)
+                                    ;;
+                                'fat32')
+                                    mkfs.fat -F 32 /dev/$(cat .icache/.getpart) 2> .error
+                                    if [ $? -ne 0 ];then
+                                        dialog --backtitle "Arch Linux Installation" --title "Format Failed" --textbox .error 8 60
+                                    fi
                                     ;;
                                 'Custom')
                                     dialog --backtitle "Arch Linux Installation" --title "Format Partition"  --inputbox 'Please input the filesystem: ' 9 30 2> .icache/.getmethod
@@ -172,7 +180,7 @@ custom_drive() {
                     done
                     dialog --backtitle "Arch Linux Installation" --title "Mount Partition" --menu "Select a partition:  " 12 30 8 `cat .icache/.lsblk` 2> .icache/.getpart
                     if [ $? -eq 0 ];then
-                        dialog --backtitle "Arch Linux Installation" --title "Mount Partition"  --menu "Select a mountpoint for $(cat .icache/.getpart):  " 12 60 50 '/' 'System installation [Important]' '/boot' 'Booting System [Important]' '/home' 'For User' '/var' 'For Server' 'umount' 'Unmount the Partition' 'custom' 'Custom a new mountpoint' 2> .icache/.getmethod
+                        dialog --backtitle "Arch Linux Installation" --title "Mount Partition"  --menu "Select a mountpoint for $(cat .icache/.getpart):  " 12 60 50 '/' 'System installation [Important]' $EFIMOUNT 'Booting System [Important]' '/home' 'For User' '/var' 'For Server' 'umount' 'Unmount the Partition' 'custom' 'Custom a new mountpoint' 2> .icache/.getmethod
                         if [ $? -eq 0 ];then
                             if [[ $(cat .icache/.getmethod) == 'umount' ]];then
                                 MOUNT=$(findmnt /dev/`cat .icache/.getpart` | grep -v TARGET | cut -d ' ' -f1)
@@ -480,21 +488,39 @@ sleep 1s
 # Main Menu
 while true
 do
-    dialog --backtitle "Arch Linux Installation" --title "Installation Menu" --no-cancel --menu 'Please select a option: ' 24 52 10 \
-        Keyboard        $KEYMODE, \
-        Language        $LANGUAGE, \
-        'Drive(s)'      $INSTALL_DISK_MODE, \
-        Grub_Install    $GRUB_DISK, \
-        Timezone        $TIMEZONE,\
-        Hostname        $IS_SETHOST,\
-        Root_Passwd     $IS_SETROOT,\
-        User            $IS_USER,\
-        Installation_Mode   $INSTALL_MODE\
-        Additional_Packs    $ADD_LIST,\
-        --------     -------------------------\
-        Start   'Start Install Arch Linux'\
-        Exit    'Exit Installation'\
-        2> .icache/.getMenuNum
+    if [ $IS_EFI -eq 1 ]; then
+        dialog --backtitle "Arch Linux Installation" --title "Installation Menu" --no-cancel --menu 'Please select a option: ' 24 52 10 \
+            Keyboard        $KEYMODE, \
+            Language        $LANGUAGE, \
+            'Drive(s)'      $INSTALL_DISK_MODE, \
+            Timezone        $TIMEZONE,\
+            Hostname        $IS_SETHOST,\
+            Root_Passwd     $IS_SETROOT,\
+            User            $IS_USER,\
+            Installation_Mode   $INSTALL_MODE\
+            Additional_Packs    $ADD_LIST,\
+            --------     -------------------------\
+            Start   'Start Install Arch Linux'\
+            Exit    'Exit Installation'\
+            2> .icache/.getMenuNum
+    else
+        dialog --backtitle "Arch Linux Installation" --title "Installation Menu" --no-cancel --menu 'Please select a option: ' 24 52 10 \
+            Keyboard        $KEYMODE, \
+            Language        $LANGUAGE, \
+            'Drive(s)'      $INSTALL_DISK_MODE, \
+            Grub_Install    $GRUB_DISK, \
+            Timezone        $TIMEZONE,\
+            Hostname        $IS_SETHOST,\
+            Root_Passwd     $IS_SETROOT,\
+            User            $IS_USER,\
+            Installation_Mode   $INSTALL_MODE\
+            Additional_Packs    $ADD_LIST,\
+            --------     -------------------------\
+            Start   'Start Install Arch Linux'\
+            Exit    'Exit Installation'\
+            2> .icache/.getMenuNum
+    fi
+    
     case $(cat .icache/.getMenuNum) in
         Keyboard)
             keyboardLayout

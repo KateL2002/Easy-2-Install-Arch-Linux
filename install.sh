@@ -213,19 +213,25 @@ if [ -f /root/addPacks.list ];then
     setSSHConfig
 fi
 
-if [ $INSTALL_DISK ];then
-    echo "[$(date '+%F %T')] Installing grub..."
-    if [ `cat /root/.is_efi` -eq 1 ]; then
-        grub-install --target=x86_64-efi --efi-directory=/boot/EFI/ --removable
-    else
-        grub-install --target=i386-pc /dev/$INSTALL_DISK
+echo "[$(date '+%F %T')] Installing grub..."
+if [[ $(cat /root/.is_efi) == '1' ]]; then
+    grub-install --target=x86_64-efi --efi-directory=/boot/EFI/ --bootloader-id=GRUB
+    if [ $? -ne 0 ];then
+        echo "[$(date '+%F %T')] ERROR: Grub is not installed! Please install grub at first."
+        sleep 2s
+        exit 1
     fi
-    
-    echo "[$(date '+%F %T')] making boot config for grub..."
-    grub-mkconfig -o /boot/grub/grub.cfg
 else
-    echo "[WARNING] Grub is not installed, Please install grub before reboot!" >&2
+    grub-install --target=i386-pc /dev/$INSTALL_DISK
+    if [ $? -ne 0 ];then
+        echo "[$(date '+%F %T')] ERROR: Grub is not installed! Please install grub at first."
+        sleep 2s
+        exit 1
+    fi
 fi
+
+echo "[$(date '+%F %T')] making boot config for grub..."
+grub-mkconfig -o /boot/grub/grub.cfg
 
 echo "[$(date '+%F %T')] Cleaning Installation Environment."
 rm -rf /root/.iconfig /root/install.sh /root/addPacks.list /root/server.list 

@@ -67,7 +67,7 @@ if [ $USER_NAME ];then
     userdel $USER_NAME
 fi
 
-if [ ! $INSTALL_DISK ];then
+if [[ ! $INSTALL_DISK && $IS_EFI == 0 ]];then
     echo "[ERROR] You have not set up install disk!" >&2
     exit 1
 fi
@@ -147,7 +147,7 @@ Install_on_a_disk() {
     PART1=$INSTALL_DISK'1'; PART2=$INSTALL_DISK'2'
     echo "[$(date '+%F %T')] Formatting partition..."
     sleep 1s
-    mkfs.exfat /dev/$PART1 && mkfs.ext4 /dev/$PART2 
+    mkfs.fat -F 32 /dev/$PART1 && mkfs.ext4 /dev/$PART2 
     if [ $? -ne 0 ];then
         echo "[ERROR] An error occurred while formatting partition." >&2
         exit 1
@@ -176,7 +176,9 @@ case $INSTALL_DISK_MODE in
             exit 1
         fi
         if [ ! $(lsblk | grep "SWAP") ];then
-            swapfile
+            if [ $SWAP_SIZE -ne 0 ];then
+                dd if=/dev/zero of=/mnt/swapfile bs=1M count=$SWAP_SIZE status=progress 2>&1
+            fi
             if [ $? -ne 0 ];then
                 rm -rf /mnt/swapfile
                 echo "[ERROR] Can not write swap file." >&2
@@ -218,7 +220,11 @@ sleep 1s
 pacman-key --init
 echo "[$(date '+%F %T')] Installing Basic Packages..."
 echo "[ERROR] Failed to install packages to new root." >&2
-pacstrap -K /mnt base base-devel linux-lts linux-lts-headers linux-firmware nano man-pages man-db grub networkmanager zsh zsh-completions neofetch
+if [[ $IS_EFI -eq 1 ]]; then
+    pacstrap -K /mnt base base-devel linux-lts linux-lts-headers linux-firmware nano man-pages man-db grub efibootmgr networkmanager zsh zsh-completions neofetch
+else
+    pacstrap -K /mnt base base-devel linux-lts linux-lts-headers linux-firmware nano man-pages man-db grub networkmanager zsh zsh-completions neofetch
+fi
 if [ $? -ne 0 ];then
     echo "[ERROR] Install Failed while installing basic packages." >&2
     exit 1
