@@ -10,6 +10,7 @@
 
 1. Use git to clone this repository.
    ```bash
+   pacman -Sy git glibc
    git clone https://github.com/KateL2002/Easy-2-Install-Arch-Linux.git
    ```
 
